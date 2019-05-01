@@ -28,6 +28,8 @@ an object the current day according to the system clock.
     say $n - $d;                    # OUTPUT: «7␤», 7 days between New Years/Christmas Eve
     say $n + 1;                     # OUTPUT: «2016-01-01␤»
 
+B<Note> since version 6.d, .perl can be called on C<Date>.
+
 =head1 Methods
 
 =head2 method new
@@ -246,7 +248,7 @@ seconds and C<sleep 5.2> sleeps for 5.2 seconds:
     sub sleep-timer(Real() $seconds = Inf --> Duration:D)
 
 This function is implemented like C<sleep>, but unlike the former it does
-return a L<Duration> instance with the number of seconds the system did not
+return a L<Duration|/type/Duration> instance with the number of seconds the system did not
 sleep.
 
 In particular, the returned C<Duration> will handle the number of seconds remaining

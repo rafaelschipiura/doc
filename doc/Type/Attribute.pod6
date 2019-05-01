@@ -7,10 +7,10 @@
     class Attribute { }
 
 In Perl 6 lingo, an I<attribute> refers to a per-instance/object storage slot.
-An C<Attribute> is used to talk about classes' and roles' attributes on the
+An C<Attribute> is used to talk about classes' and roles' attributes at the
 meta level.
 
-Normal usage of attributes does not require the user to use class Attribute
+Normal usage of attributes does not require the user to use this class
 explicitly.
 
 The usual way to obtain an object of type C<Attribute> is by introspection:
@@ -24,7 +24,8 @@ The usual way to obtain an object of type C<Attribute> is by introspection:
     say $a.package;         # OUTPUT: «(Useless)␤»
     say $a.has_accessor;    # OUTPUT: «False␤»
 
-Modifying a private attribute from the outside is usually not possible, but since Attribute is at the level of the meta class, all is fair game
+Modifying a private attribute from the outside is usually not possible, but
+since Attribute is at the level of the meta class, all is fair game
 
 =begin code :preamble<class Useless { has @!things }; my $a>
 my $instance = Useless.new;
@@ -62,13 +63,40 @@ error.
     CATCH{ default { say .^name, ': ', .Str } }
     # OUTPUT: «X::Attribute::Required: The attribute '$!a' is required, but you did not provide a value for it.␤»
 
+B<Available as of 6.d language version> (early implementation exists in Rakudo
+compiler 2018.08+):
+
+You can specify a reason why the attribute is required:
+
+=begin code
+class D {
+    has $.a is required("it is a good idea");
+}
+my $d = D.new;
+CATCH{ default { say .^name, ': ', .Str } }
+# OUTPUT: «X::Attribute::Required: The attribute '$!a' is required because it is a good idea,␤but you did not provide a value for it.␤»
+=end code
+
 =head2 X<trait is DEPRECATED|trait,is DEPRECATED (Attribute)>
 
     multi sub trait_mod:<is>(Attribute:D $r, :$DEPRECATED!)
 
 Marks an attribute as deprecated, optionally with a message what to use instead.
 
-TODO: Add example when it's implemented in Rakudo.
+    class C {
+        has $.foo is DEPRECATED("'bar'");
+    }
+    my $c = C.new( foo => 42 );  # doesn't trigger with initialization (yet)
+    say $c.foo;                  # does trigger on usage
+
+B<After> the program is finished, this will show something like this on
+STDERR:
+
+    # Saw 1 occurrence of deprecated code.
+    # =====================================
+    # Method foo (from C) seen at:
+    # script.p6, line 5
+    # Please use 'bar' instead.
 
 =head1 Methods
 
@@ -212,16 +240,17 @@ during object construction, an exception is thrown.
 
 C<is required> doesn't just affect the default constructor, it checks for the
 attribute at a lower level, so it will work for custom constructors written
-using L<bless>.
+using L<bless|/routine/bless>.
 
 
 =head2 trait is rw
 
+Defined as:
+
     multi sub trait_mod:<is> (Attribute:D $attr, :$rw!)
 
-Marks an attribute as read/write as opposed to the default
-C<readonly>.  The default accessor for the attribute will return a
-writable value.
+Marks an attribute as read/write as opposed to the default C<readonly>.  The
+default accessor for the attribute will return a writable value.
 
    class Boo {
       has $.bar is rw;
@@ -233,6 +262,27 @@ writable value.
    $boo.baz = 42;
    CATCH { default { put .^name, ': ', .Str } };
    # OUTPUT: «X::Assignment::RO: Cannot modify an immutable Any␤»
+
+=head2 method gist
+
+Defined as
+
+    multi method gist(Attribute:D:)
+
+Returns the name of the type followed by the name of the attribute.
+
+=for code
+class Hero {
+    has @!inventory;
+    has Str $.name;
+    submethod BUILD( :$name, :@inventory ) {
+        $!name = $name;
+        @!inventory = @inventory
+    }
+}
+say Hero.^attributes(:local)[0]; # OUTPUT: «Positional @!inventory»
+
+Since say implicitly calls C<.gist>, that is what produces the output here.
 
 =end pod
 

@@ -1,14 +1,14 @@
 =begin pod :tag<convert>
 
-=TITLE Perl 6 from Haskell - Nutshell
+=TITLE Haskell to Perl 6 - nutshell
 
-=SUBTITLE Learning Perl 6 from Haskell, in a nutshell: What do I already know?
+=SUBTITLE Learning Perl 6 from Haskell, in a nutshell: what do I already know?
 
-Haskell and Perl 6 are I<very> different languages. This is obvious. However,
-that does not mean there are not similarities or shared ideas! This page
-attempts to get a Haskell user up and running with Perl 6. The Haskell user may
-find that they need not abandon all of their Haskelly thoughts while scripting
-in Perl 6.
+Haskell and Perl 6 are I<very> different languages. This is obvious.
+However, that does not mean there are not similarities or shared ideas!
+This page attempts to get a Haskell user up and running with Perl 6. The
+Haskell user may find that they need not abandon all of their Haskelly
+thoughts while scripting in Perl 6.
 
 Note that this should not be mistaken for a beginner tutorial or overview of
 Perl 6; it is intended as a technical reference for Perl 6 learners with a
@@ -17,7 +17,7 @@ strong Haskell background.
 
 =head1 Types
 
-=head2 Types vs Values
+=head2 Types vs values
 
 In Haskell, you have type level programming and then value level programming.
 
@@ -65,8 +65,9 @@ Let's say you have a hypothetical function that parses a String to an Integer:
       Nothing -> 0
     =end code
 
-In Perl 6, since type objects coexist with regular objects, we have the concept of Defined
-and Undefined objects. Plain type objects are undefined while instantiated objects are defined.
+In Perl 6, since type objects coexist with regular objects, we have the concept
+of Defined and Undefined objects. Plain type objects are undefined while
+instantiated objects are defined.
 
     =begin code
     sub parse-int(Str $s --> Int) { ... }
@@ -80,7 +81,7 @@ and Undefined objects. Plain type objects are undefined while instantiated objec
 
 So in Perl 6 we have type constraints that indicate the definedness of a type. These are
 
-    =begin code :skip-test
+    =begin code
     Int:D; # This is a defined Int.
     Int:U; # This is an undefined Int, AKA a type object
     Int:_; # This is either defined or undefined.
@@ -129,15 +130,19 @@ For more natural control flow with undefined and defined types, Perl 6 introduc
     hello() andthen say 'bye';
     =end code
 
+=begin comment
 TODO: include a better example for andthen that makes sense. Maybe using promise objects?
+=end comment
 
-So in practice, Perl 6 does not have the concept of a null type, but rather of defined or undefined types.
+So in practice, Perl 6 does not have the concept of a null type, but rather of
+defined or undefined types.
 
-=head2 Data Definitions
+=head2 Data definitions
 
-Perl 6 is fundamentally an Object Oriented language. However, it also gives you the freedom
-to write in virtually any paradigm you wish. If you only want to pure functions that take an
-object and return a new object, you can certainly do so.
+Perl 6 is fundamentally an object oriented language. However, it also gives you
+the freedom to write in virtually any paradigm you wish. If you only want to
+pure functions that take an object and return a new object, you can certainly do
+so.
 
 Here is a Haskell code example:
 
@@ -158,9 +163,10 @@ And an equivalent Perl 6 example:
     }
     =end code
 
-The code I illustrated above is an example of a Product Type. If instead you'd like to
-write a Sum Type, there is not an exact equivalent in Perl 6. The closest thing would be
-an Enum.
+The code I illustrated above is an example of a
+L<Product Type|https://wiki.haskell.org/Algebraic_data_type>. If instead you'd like to
+write a Sum Type, there is not an exact equivalent in Perl 6. The closest thing
+would be an L<Enum|/language/typesystem#enum>.
 
     =begin code :lang<haskell>
     data Animal = Dog | Cat | Bird | Horse
@@ -170,7 +176,7 @@ an Enum.
     testAnimal Horse = "Neigh"
     =end code
 
-A Perl 6 Enum does not fit the same exact use cases, but it can be used in putting
+Although it does not fit the same exact use cases, it can be used in putting
 constraints on types.
 
     =begin code
@@ -180,14 +186,14 @@ constraints on types.
     multi sub test-animal( Dog           ) { 'Woof' }
     multi sub test-animal( Animal::Horse ) { 'Neigh'  }   # more explicit
 
-    say test-animal Animal::Dog; # more explicit
+    say test-animal Animal::Dog;                          # more explicit
     say test-animal Horse;
     =end code
 
-=head2 Type Aliases and Subsets
+=head2 Type aliases and subsets
 
-In Haskell, you can alias an existing type to simply increase clarity of intent and re-use
-existing types.
+In Haskell, you can alias an existing type to simply increase clarity of intent
+and re-use existing types.
 
     =begin code :lang<haskell>
     type Name = String
@@ -221,11 +227,13 @@ It should be noted that in Perl 6, one can also create a subset of an existing 
 
 TODO
 
+=begin comment
 explain how Perl 6 roles compare to Haskell typeclasses
+=end comment
 
 =head1 Functions
 
-=head2 Definitions and Signatures
+=head2 Definitions and signatures
 
 =Pattern Matching
 
@@ -332,7 +340,7 @@ TODO
 
 show function composition operator. Maybe explain a more perl6ish way to do this though.
 
-=head1 Case / Matching
+=head1 Case / matching
 
 Haskell makes heavy use of case matching like the below:
 
@@ -368,7 +376,7 @@ to the C<@> sigil. Explain how you can convert an Array to a flattened list of o
 
 data shapes become quite intuitive, but it takes a bit of practice.
 
-=head2 List Comprehensions
+=head2 List comprehensions
 
 There are no explicit list comprehensions in Perl6. But rather, you can achieve list comprehensions
 a couple of different ways.
@@ -420,7 +428,7 @@ And in Perl6:
     =end code
 
 See this design document for more information on what kinds of list comprehensions are possible
-in Perl6: L<http://design.perl6.org/S04.html#The_do-once_loop>.
+in Perl6: L<https://design.perl6.org/S04.html#The_do-once_loop>.
 
 As you can see, when you get into some more advanced Haskell list comprehensions, Perl6
 does not translate exactly the same, but it's possible to do the same things, nonetheless.
@@ -439,8 +447,8 @@ Fold in Haskell is called Reduce in Perl 6.
     @numbers.reduce({$^a + $^b}, with => 0)
     =end code
 
-However, in Perl 6, if you want to use an infix operator (+ - / % etc) there is a nice little
-helper called the Reduction Metaoperator.
+However, in Perl 6, if you want to use an infix operator (+ - / % etc)
+there is a nice little helper called the Reduction metaoperator.
 
     =begin code
     my @numbers = {...};
@@ -459,7 +467,7 @@ associativity attached to the operator/subroutine.
     # you can use a subroutine as an infix operator
     say 'a' [&two-elem-list] 'b'; # (a b)
 
-    # as the reduction prefix meta operator takes an infix operator, it will work there too;
+    # as the reduction prefix metaoperator takes an infix operator, it will work there too;
     [[&two-elem-list]] 1..5;           # ((((1 2) 3) 4) 5)
     say (1..5).reduce: &two-elem-list; # ((((1 2) 3) 4) 5)
 
@@ -496,7 +504,7 @@ Haskell and Perl 6 both allow you to specify ranges of values.
     my $range3 = 'a'..'h';  # Letters work too
     =end code
 
-=head2 Laziness vs Eagerness
+=head2 Laziness vs eagerness
 
 In the examples above, you have the concept of laziness displayed very plainly. Perl 6 has laziness
 only where it makes the most sense. For example, in the range 10..100, this is eager because it has
@@ -525,7 +533,7 @@ compare it to let/in and where constructs maybe?
 
 =head1 Parsers
 
-=head2 Parser Combinators vs Grammars
+=head2 Parser combinators vs grammars
 
 TODO
 

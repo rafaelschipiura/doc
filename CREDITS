@@ -33,6 +33,7 @@ N: Akim Demaille
 E: akim@lrde.epita.fr
 
 N: Alex Chen
+U: TisonKun
 U: W4anD0eR96
 E: wander4096@gmail.com
 
@@ -100,7 +101,8 @@ N: Edwin Steiner
 E: edwin.steiner@gmx.net
 
 N: Elizabeth Mattijsen
-E: liz@dijkmat.nl
+U: lizmat
+E: liz@wenzperl.nl
 
 N: ennio
 E: scriplit@yahoo.com
@@ -139,7 +141,13 @@ N: Jimmy Zhuo
 E: zhuomingliang@yahoo.com.cn
 
 N: JJ Merelo
+N: Juan Julián Merelo Guervós
 E: jjmerelo@gmail.com
+U: JJ
+
+N: Joelle Maslak
+E: jmaslak@antelope.net
+U: jmaslak
 
 N: John Gabriele
 E: jgabriele@fastmail.fm
@@ -202,6 +210,9 @@ E: mdinger.bugzilla@gmail.com
 
 N: Mike Francis
 E: ungrim97@gmail.com
+
+N: Moray Jones
+E: github@mrjones.co.uk
 
 N: Moritz Lenz
 E: moritz@faui2k3.org
@@ -321,6 +332,9 @@ E: email@froggs.de
 
 N: Tokuhiro Matsuno
 E: tokuhirom@gmail.com
+
+N: Trey Harris
+E: treyharris@gmail.com
 
 N: Claudio Ramirez
 E: pub.claudio@gmail.com

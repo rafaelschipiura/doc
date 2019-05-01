@@ -4,7 +4,7 @@
 
 =SUBTITLE Common Perl 6 routines that are defined outside any class
 
-See L<Sub> on how to define routines and work with them.
+See L<Sub|/type/Sub> on how to define routines and work with them.
 
 =head1 Control routines
 
@@ -16,18 +16,21 @@ Defined as:
 
     sub exit(Int() $status = 0)
 
-Exits the current process with return code C<$status> or zero if no value has
-been specified. The exit value (C<$status>), when different from zero, has to be
-opportunely evaluated from the process that catches it (e.g., a shell).
+Exits the current process with return code C<$status> or zero if no
+value has been specified. The exit value (C<$status>), when different
+from zero, has to be opportunely evaluated from the process that catches
+it (e.g., a shell); it is the only way to return an exit code different
+from zero from a L<Main|/routine/MAIN>.
 
-C<exit> does prevent the L<LEAVE|/language/phasers#LEAVE> phaser to be executed.
+C<exit> prevents the L<LEAVE|/language/phasers#LEAVE> phaser to be
+executed, but it will run the code in the
+L<C<&*EXIT>|/language/variables#index-entry-%24*EXIT> variable.
 
-C<exit> should be used as last resort only to signal the parent process about an
-exit code different from zero, and should not be used to terminate exceptionally
-a method or a sub: use  L<exceptions|/language/exceptions> instead.
+C<exit> should be used as last resort only to signal the parent process
+about an exit code different from zero, and not to terminate
+exceptionally a method or a sub: use L<exceptions|/language/exceptions>
+instead.
 
-It is worth noting that the only way to return an exit code different from zero
-from a L<Main|/routine/MAIN> function is by means of using C<exit>.
 
 =head2 X<done>
 
@@ -36,7 +39,7 @@ Defined as
     sub done(--> Nil)
 
 If used outside any supply or react block, throws an exception C<done without
-supply or react>. Within a L<Supply> block, it will indicate the supply will no
+supply or react>. Within a L<Supply|/type/Supply> block, it will indicate the supply will no
 longer emit anything. See also L<documentation on method C<done>|/routine/done>.
 
 =for code
@@ -59,7 +62,7 @@ Defined as
     sub emit(\value --> Nil)
 
 If used outside any supply or react block, throws an exception C<emit without
-supply or react>. Within a L<Supply> block, it will add a message to the stream.
+supply or react>. Within a L<Supply|/type/Supply> block, it will add a message to the stream.
 
 =begin code
 my $supply = supply {
@@ -72,6 +75,17 @@ $supply.tap( -> $v { say "First : $v" });
 
 See also L<the page for C<emit> methods|/routine/emit>.
 
+=head2 X<undefine>
+
+Defined as:
+
+    multi sub undefine(Mu    \x)
+    multi sub undefine(Array \x)
+    multi sub undefine(Hash  \x)
+
+B<DEPRECATED> in 6.d language version and will be removed in 6.e. For L<Array|/type/Array>
+and L<Hash|/type/Hash>, it will become equivalent to assigning L<Empty|/type/Slip#index-entry-Empty-Empty>; for everything
+else, equivalent to assigning L<Nil|/type/Nil>, whose use is advised.
 
 =end pod
 

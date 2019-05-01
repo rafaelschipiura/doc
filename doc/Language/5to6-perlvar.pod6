@@ -1,8 +1,8 @@
 =begin pod :tag<convert>
 
-=TITLE Perl 5 to Perl 6 guide - Special Variables
+=TITLE Perl 5 to Perl 6 guide - special variables
 
-=SUBTITLE A comparison of special variables in Perl 5 and Perl 6.
+=SUBTITLE A comparison of special variables in Perl 5 and Perl 6
 
 =head1 DESCRIPTION
 
@@ -21,7 +21,7 @@ please see the Perl 6 documentation for each of them.
 
 X<|Special Variables (Perl 5)>
 
-=head2 General Variables
+=head2 General variables
 
 =item $ARG
 
@@ -86,8 +86,8 @@ In Perl 6 the group information is handled by C<$*GROUP>,
 which holds an object of type L<IntStr|/type/IntStr>
 and therefore can be used either within a string
 or a numeric context.
-The group id is therefore obtained via C<$*GROUP.Numeric>, while the
-group name via C<$*GROUP.Str>.
+The group id is therefore obtained via C<+$*GROUP>, while the
+group name via C<~$*GROUP>.
 
 =item $EFFECTIVE_GROUP_ID
 
@@ -108,9 +108,8 @@ which holds an object of type L<IntStr|/type/IntStr>
 and therefore can be used either within a string
 or a numeric context (this is similar to how the group
 information is handled by the C<$*GROUP> object).
-The user id is therefore obtained via C<$*USER.Numeric>, while the
-username via C<$*USER.Str>.
-
+The user id is therefore obtained via C<+$*USER>, while the
+username via C<~$*USER>.
 
 =item $EFFECTIVE_USER_ID
 
@@ -170,8 +169,7 @@ C<OLDPWD> is missing from Perl 6's %ENV.
 The running version of Perl 6 is kept by C<$*PERL> special variable, that is an object.
 The running version is retrieved via C<$*PERL.version>, which returns something
 like C<v6.c>; the full stringified version of the Perl interpreter is obtained
-via C<$*PERL.Str>, which returns something like C<Perl 6 (6.c)>.
-
+via C<~$*PERL>, which returns something like C<Perl 6 (6.c)>.
 
 =item $SYSTEM_FD_MAX
 
@@ -269,16 +267,36 @@ exact running instance, for more information use <.^methods> to introspect all t
 
 =item %SIG
 
-[NEEDS FURTHER RESEARCH] No equivalent variable. S28 indicates that this
-functionality is dealt with in Perl 6 by event filters and exception
-translation.
+No equivalent variable. To have your code executed on the reception of a
+signal, you can call the L<signal|/routine/signal#(Supply)_sub_signal>
+subroutine, which returns a C<Supply> that can be tapped.
+
+=for code :lang<perl5>
+$SIG{"INT"} = sub { say "bye"; exit }
+=for code
+signal(SIGINT).tap: { say "bye"; exit }; loop {}
+
+Or, if you have a generic code that want to know which signal it got:
+
+=for code
+signal(SIGINT).tap: -> $signal { say "bye with $signal"; exit }; loop {}
+
+A more idiomatic way of using signals in an event driven situation:
+
+=for code
+react {
+    whenever signal(SIGINT) {
+        say "goodbye";
+        done
+    }
+}
 
 =item $BASETIME
 
 =item $^T
 
 Replaced in Perl 6 by C<$*INIT-INSTANT>. Unlike in Perl 5, this is not in
-seconds since epoch, but an L<Instant> object, which is measured in atomic
+seconds since epoch, but an L<Instant|/type/Instant> object, which is measured in atomic
 seconds, with fractions.
 
 =item $PERL_VERSION
@@ -359,7 +377,7 @@ Does not exist in Perl 6, but you can get the same information using C<$/[*-
 
 If you want to I<understand> why that works, you can look at these documents:
 
-=item L<[ ] routine|/routine/%5b%20%5d#language_documentation_operators>
+=item L<[ ] routine|/routine/%5b%20%5d#language_documentation_Operators>
 
 =item L<Whatever|/type/Whatever>
 
@@ -460,13 +478,12 @@ Currently no obvious equivalent.
 
 No direct replacement exists.
 
-When iterating using L<lines> method from L<IO::Path> or L<IO::Handle> types,
-you can L<zip|/language/operators#index-entry-Z_%28zip_meta_operator%29> with
-a L<Range>:
+When iterating using L<lines|/routine/lines> method from L<IO::Path> or L<IO::Handle> types,
+you can call the C<.kv> method on it to get an interleaved list of indexes and values (then iterate by 2 each loop):
 
 =begin code
-for 1..* Z "foo".IO.lines -> ($ln, $text) {
-    say "$ln: $text"
+for "foo".IO.lines.kv -> $n, $line {
+    say "{$n + 1}: $line"
 }
 # OUTPUT:
 # 1: a
@@ -506,7 +523,7 @@ C<$*OUT.nl-out>.
 =item $|
 
 No global alternative available. TTY handles are unbuffered by default, for
-others, set L<out-buffer> to zero or use C<:!out-buffer> with L<open> on a
+others, set L<out-buffer> to zero or use C<:!out-buffer> with L<open|/routine/open> on a
 specific L<IO::Handle>.
 
 =item ${^LAST_FH}
@@ -517,7 +534,7 @@ Not implemented in Perl 6.
 
 There are no built-in formats in Perl 6.
 
-=head2 Error Variables
+=head2 Error variables
 
 Because of how error variables have changed in Perl 6, they will not be detailed
 here individually.
@@ -560,59 +577,32 @@ therefore, as stated before, the C<$!> variable holds the exception object.
 
 =head2 Variables related to the interpreter state
 
-=item $COMPILING
-
-=item $^C
-
-=item $^D
+=head3 $COMPILING, $^C, $^D, ${^ENCODING}, ${^GLOBAL_PHASE}
 
 Currently no equivalents for either of these variables.
 
-=item ${^ENCODING}
-
-Although deprecated in Perl 5, this may have some sort of equivalent in
-C<$?ENC>, but this is far from clear.
-
-=item ${^GLOBAL_PHASE}
-
-No Perl 6 equivalent.
-
-=item $^H
-
-=item %^H
-
-=item ${^OPEN}
+=head3 $^H, %^H, ${^OPEN}
 
 There may or may not be equivalents of these in Perl 6, but they're internal
 and you shouldn't be messing with them in the first place - certainly not if
 your understanding of Perl 6 requires you to read this document...
 
-=item $PERLDB
-
-=item $^P
+=head3 $PERLDB, $^P
 
 The chance of the Perl 6 debugger resembling the Perl 5 debugger is slim
 at best, and at this point there does not seem to be an equivalent of
 this variable.
 
-=item ${^TAINT}
+=head3 ${^TAINT}
 
 S28 claims this variable is "pending". Not currently in Perl 6.
 
-=item ${^UNICODE}
-
-=item ${^UTF8CACHE}
-
-=item ${^UTF8LOCALE}
+=head3 ${^UNICODE}, ${^UTF8CACHE}, ${^UTF8LOCALE}
 
 These Unicode-related variables do not appear to exist in Perl 6, but -
 maybe? - could have analogs in C<$?ENC> somewhere. This, however, is
 totally unconfirmed.
 
-=head2 Deprecated and removed variables
-
-It should go without saying that, as these have been removed from Perl 5
-already, there should be no need to tell you how to use them in Perl 6.
 
 =end pod
 

@@ -10,27 +10,30 @@ use v6;
 }
 
 use Test;
+use File::Temp;
 
 use lib 'lib';
 use Pod::Convenience;
 use Test-Files;
 
-=begin overview
+=begin SYNOPSIS
 
 Test all of the code samples in the document files. Wrap snippets
-in enough boilerplate that we are just compiling and not executing
+in enough boilerplate so that we are just compiling and not executing
 wherever possible. Allow some magic for method declarations to
 avoid requiring a body.
 
-Skip any bits marked :skip-test unless the environment variable
-P6_DOC_TEST_FUDGE is set to a true value.
+Skip any bits marked C<:skip-test> unless the environment variable
+C<P6_DOC_TEST_FUDGE> is set to a true value.
 
 Note: This test generates a lot of noisy output to stderr; we
 do hide $*ERR, but some of these are emitted from parts of
 the compiler that only know about the low level handle, not the
 Perl 6 level one.
 
-=end overview
+Note: Because of our use of EVAL, avoid concurrency.
+
+=end SYNOPSIS
 
 my @files = Test-Files.pods;
 
@@ -44,9 +47,12 @@ sub walk($arg) {
 
 # Extract all the examples from the given files
 my @examples;
+
 my $counts = BagHash.new;
 for @files -> $file {
-    for extract-pod($file.IO).contents -> $chunk {
+    my @chunks = extract-pod($file.IO).contents;
+    while @chunks {
+        my $chunk = @chunks.pop;
         if $chunk ~~ Pod::Block::Code  {
             if $chunk.config<lang> && $chunk.config<lang> ne 'perl6' {
                 next; # Only testing Perl 6 snippets.
@@ -63,7 +69,12 @@ for @files -> $file {
                 'ok-test',   $chunk.config<ok-test> // "",
                 'preamble',  $chunk.config<preamble> // "",
                 'method',    $chunk.config<method> // "",
+                'solo',      $chunk.config<solo> // "",
             );
+        } else {
+            if $chunk.^can('contents') {
+                @chunks.push(|$chunk.contents)
+            }
         }
     }
 }
@@ -88,35 +99,52 @@ for @examples -> $eg {
     # Further wrap in an anonymous class (so bare method works)
     # Add in empty routine bodies if needed
 
-    my $code = 'no worries; ';
-    $code ~= "if False \{\nclass :: \{\n";
-    $code ~= $eg<preamble> ~ ";\n";
+    my $code;
+    if $eg<solo> {
+        $code = $eg<contents>;
+    } else {
+        $code = 'no worries; ';
+        $code ~= "if False \{\nclass :: \{\n";
+        $code ~= $eg<preamble> ~ ";\n";
 
-    for $eg<contents>.lines -> $line {
-        $code ~= $line;
-        if $line.trim.starts-with(any(<multi method proto only sub>)) && !$line.trim.ends-with(any('}',',')) && $eg<method> eq "" {
-           $code ~= " \{}";
+        for $eg<contents>.lines -> $line {
+            $code ~= $line;
+            if $line.trim.starts-with(any(<multi method proto only sub>)) && !$line.trim.ends-with(any('}',',')) && $eg<method> eq "" {
+               $code ~= " \{}";
+            }
+            if $eg<method> eq "" || $eg<method> eq "False" {
+                $code ~= "\n";
+            }
         }
-        if $eg<method> eq "" || $eg<method> eq "False" {
-            $code ~= "\n";
-        }
+        $code ~= "\{}\n" if $eg<method> eq "True";
+        $code ~= "\n}}";
     }
-    $code ~= "\{}\n" if $eg<method> eq "True";
-    $code ~= "\n}}";
 
     my $msg = "$eg<file> chunk $eg<count> starts with “" ~ starts-with($eg<contents>) ~ "” compiles";
 
-    my $status;
+    my $has-error;
     {
-        temp $*OUT = open :w, $*SPEC.devnull;
-        temp $*ERR = open :w, $*SPEC.devnull;
-        try EVAL $code;
-        $status = $!;
+        # Does the test require its own file?
+        if $eg<solo> {
+            my ($tmp_fname, $tmp_io) = tempfile;
+            $tmp_io.spurt: $code, :close;
+            my $proc = Proc::Async.new($*EXECUTABLE, '-c', $tmp_fname);
+            $proc.stdout.tap: {;};
+            $proc.stderr.tap: {;};
+            $has-error = ! await $proc.start;
+        } else {
+            temp $*OUT = open :w, $*SPEC.devnull;
+            temp $*ERR = open :w, $*SPEC.devnull;
+            try EVAL $code;
+            $has-error = $!;
+            close $*OUT;
+            close $*ERR;
+        }
     }
     todo(1) if $eg<todo>;
-    if $status {
+    if $has-error {
         diag $eg<contents>;
-        diag $status;
+        diag $has-error;
         flunk $msg;
     } else {
         pass $msg;

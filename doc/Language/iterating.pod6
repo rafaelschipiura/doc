@@ -7,9 +7,9 @@
 =head1 The C<Iterator> and C<Iterable> roles
 
 Perl 6 is a functional language, but functions need something to hold on to when
-working on complex data structures. In particular, they need an uniform
+working on complex data structures. In particular, they need a uniform
 interface that can be applied to all of them. This interface is provided by the
-L<Iterator> and L<Iterable> roles.
+L<Iterator|/type/Iterator> and L<Iterable|/type/Iterable> roles.
 
 The C<Iterable> role is relatively simple. It provides a stub for the C<iterator> method, which is the one actually used by statements such as C<for>. C<for> will call C<.iterator> on the variable it precedes, and then run a block once for every item. Other methods, such as array assignment, will make the C<Iterable> class behave in the same way.
 
@@ -34,15 +34,15 @@ say  @longer-chain».join("").join("|"); #OUTPUT: «ACG|TAC|GTT␤»
 
 In this example, which is an extension of the L<example in C<Iterable> that
 shows how C<for> calls C<.iterator>|/type/Iterable>, this method is called
-simply when the created object is assigned to a L<Positional> variable,
-C<@longer-chain>; this variable is an L<Array> and we operate on that in the
+simply when the created object is assigned to a L<Positional|/type/Positional> variable,
+C<@longer-chain>; this variable is an L<Array|/type/Array> and we operate on that in the
 last example.
 
 The (maybe a bit confusingly named) C<Iterator> role is a bit more complex than
 C<Iterable>. First, it provides a constant, C<IterationEnd>, but then it
 provides a series of L<methods|/type/Iterator#Methods> such as C<.pull-one>,
 which allows for a finer operation of iteration in several contexts: adding or
-elminating items, or skipping over them to access other items. In fact, the role
+eliminating items, or skipping over them to access other items. In fact, the role
 provides a default implementation for all the other methods, so the only one
 that has to be defined is precisely C<pull-one>, of which only a stub is
 provided. While C<Iterable> provides the high-level variable loops will be
@@ -84,7 +84,7 @@ C<pull-one> method. This one is going to be called every time a new iteration
 occurs, so it must keep the state of the last one. A C<$.index> property will
 hold that state across invocations; C<pull-one> will check if the end of the
 chain has been reached and will return the C<IterationEnd> constant provided by
-the role. Implementint this low-level interface, in fact, simplifies the
+the role. Implementing this low-level interface, in fact, simplifies the
 implementation of the C<Iterable> interface. Now the iterator will be the object
 itself, since we can call C<pull-one> on it to access every member in turn;
 C<.iterator> will thus return just C<self>; this is possible since the object
@@ -93,7 +93,7 @@ will be, at the same time, C<Iterable> and C<Iterator>.
 This need not always be the case, and in most cases C<.iterator> will have to
 build an iterator type  to be returned, such as we did in the previous example;
 however, this example shows the minimal code needed to build a class that
-fulfills the two iter(ator|able) roles.
+fulfills the iterator and iterable roles.
 
 =head1 How to iterate: contextualizing and topic variables
 
@@ -102,7 +102,7 @@ L<topic variable C<$_>|/language/variables#index-entry-topic_variable>, or
 capture them into the variables that are declared along with the block. These
 variables can be directly used inside the loop, without needing to declare them,
 by using the
-L<C<^> twigil|https://docs.perl6.org/syntax/$CIRCUMFLEX_ACCENT#(Traps_to_avoid)_twigil_^>.
+L<C<^> twigil|/syntax/$CIRCUMFLEX_ACCENT#(Traps_to_avoid)_twigil_^>.
 
 Implicit iteration occurs when using the L<sequence operator|/language/operators#index-entry-..._operators>.
 
@@ -129,7 +129,7 @@ L<while|/language/control#while,_until> loops are also possible.
 
 However, in general, they are discouraged. Perl 6 is a functional and concurrent
 language; when coding in Perl 6, you should look at loops in a functional way:
-processing, one by one, the items produced by an interator, that is, feeding an
+processing, one by one, the items produced by an iterator, that is, feeding an
 item to a block without any kind of secondary effects. This functional view
 allows also easy parallelization of the operation via the
 L<C<hyper>|/routine/hyper> or L<C<race>|/routine/race> auto-threading methods.
@@ -138,6 +138,7 @@ If you feel more comfortable with your good old loops, the language allows you
 to use them. However, it is considered more I<p6y> to try and use, whenever
 possible, functional and concurrent iterating constructs.
 
+*Note: Since version 6.d loops can produce a list of values from the values of last statements.*
 =end pod
 
 # vim: expandtab softtabstop=4 shiftwidth=4 ft=perl6

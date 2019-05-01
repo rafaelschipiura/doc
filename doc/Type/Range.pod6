@@ -4,8 +4,7 @@
 
 =SUBTITLE Interval of ordered values
 
-=for code :skip-test
-class Range is Iterable does Positional {}
+    class Range is Cool does Iterable does Positional {}
 
 Ranges serve two main purposes: to generate lists of consecutive
 numbers or strings, and to act as a matcher to check if a number
@@ -39,8 +38,8 @@ than the end point, the range is considered empty.
     4.5 ~~ 0..^5;            # RESULT: «True»
     (1.1..5).list;           # RESULT: «(1.1, 2.1, 3.1, 4.1)»
 
-Use the L<...|/language/operators#infix_...> sequence operator to produce lists of elements that
-go from larger to smaller values, or to use offsets other than
+Use the L<...|/language/operators#infix_...> sequence operator to produce lists
+of elements that go from larger to smaller values, or to use offsets other than
 increment-by-1 and other complex cases.
 
 Use C<∞> or C<*> (Whatever) to indicate an end point to be open-ended.
@@ -49,10 +48,20 @@ Use C<∞> or C<*> (Whatever) to indicate an end point to be open-ended.
 for 1..* { .say };       # start from 1, continue until stopped
 for 1..∞ { .say };       # the same
 
+Ranges implement L<Positional|/type/Positional> interface, so its elements can
+be accessed using an index. In a case when the index given is bigger than the
+Range object's size, L<Nil|/type/Nil> object will be returned. The access works
+for lazy Range objects as well.
+
+=for code
+say (1..5)[1];  # OUTPUT: «2␤»
+say (1..5)[10]; # OUTPUT: «Nil␤»
+say (1..*)[10]; # OUTPUT: «11␤»
+
 =head2 Ranges in subscripts
 
 A Range can be used in a subscript to get a range of values. Please note that
-assigning a Range to a scalar container turns the Range into a item. Use
+assigning a Range to a scalar container turns the Range into an item. Use
 binding, @-sigiled containers or a slip to get what you mean.
 
     my @numbers =  <4 8 15 16 23 42>;
@@ -76,6 +85,21 @@ You can use  L<smartmatch|/routine/~~> to match against Ranges.
 
     say 3 ~~ 1..12;          # OUTPUT: «True␤»
     say 2..3 ~~ 1..12;       # OUTPUT: «True␤»
+
+X<|in-range>
+I<In Rakudo only>, you can use the C<in-range> method for matching
+against a range, which in fact is equivalent to smartmatch except it will throw
+an exception when out of range, instead of returning C<False>:
+
+    say ('א'..'ת').in-range('ע');  # OUTPUT: «True␤»
+
+However, if it is not included in the range:
+=for code
+say ('א'..'ת').in-range('p', "Letter 'p'");
+# OUTPUT: «(exit code 1) Letter 'p' out of range. Is: "p", should be in "א".."ת"␤
+
+The second parameter to C<in-range> is the optional message that will be printed
+with the exception. It will print C<Value> by default.
 
 =head1 Methods
 
@@ -122,7 +146,7 @@ ones:
    say 'perl' ~~ 1..*;        # OUTPUT: «True␤»
 
 
-When smartmatching a C<Range> of integers with a L<Cool> (string)
+When smartmatching a C<Range> of integers with a L<Cool|/type/Cool> (string)
 the C<ACCEPTS> methods exploits the  L<before|/routine/before>
 and L<after|/routine/after> operators in order to check that
 the C<Cool> value is overlapping the range:
@@ -132,8 +156,8 @@ the C<Cool> value is overlapping the range:
    say '5' after 10;  # OUTPUT: «True␤»
    say '5' ~~ *..10;  # OUTPUT: «False␤»
 
-In the above example, since the C<'5'> string is I<after> the C<10> integer value,
-the C<Range> does not overlap with the specified value.
+In the above example, since the C<'5'> string is I<after> the C<10> integer
+value, the C<Range> does not overlap with the specified value.
 
 When matching with a C<Mu> instance (i.e., a generic instance),
 the L<cmp|/routine/cmp> operator is used.
@@ -178,7 +202,7 @@ otherwise.
 
 =head2 method bounds
 
-    method bounds(Range:D: --> Positional)
+    method bounds()
 
 Returns a list consisting of the start and end point.
 
@@ -223,11 +247,11 @@ Defined as:
     multi method minmax(Range:D: --> List:D)
 
 If the C<Range> is an integer range (as indicated by L<is-int>), then this
-method returns a list with the first and last value it will iterate over
-(taking into account L<excludes-min> and L<excludes-max>). If the range is
-not an integer range, the method will return a two element list containing
-the start and end point of the range unless either of L<excludes-min> or
-L<excludes-max> are C<True> in which case a L<Failure|/type/Failure> is returned.
+method returns a list with the first and last value it will iterate over (taking
+into account L<excludes-min> and L<excludes-max>). If the range is not an
+integer range, the method will return a two element list containing the start
+and end point of the range unless either of L<excludes-min> or L<excludes-max>
+are C<True> in which case a L<Failure|/type/Failure> is returned.
 
     my $r1 = (1..5); my $r2 = (1^..5);
     say $r1.is-int, ', ', $r2.is-int;                 # OUTPUT: «True, True␤»
@@ -288,7 +312,8 @@ by not actually generating the list if it is not necessary.
 
     multi method sum(--> Numeric:D)
 
-Returns the sum of all elements in the Range. Throws L<X::Str::Numeric> if an element can not be coerced into Numeric.
+Returns the sum of all elements in the Range. Throws L<X::Str::Numeric> if an
+element can not be coerced into Numeric.
 
     (1..10).sum                                       # 55
 
@@ -296,9 +321,9 @@ Returns the sum of all elements in the Range. Throws L<X::Str::Numeric> if an el
 
     method reverse(Range:D: --> Seq:D)
 
-Returns a L<Seq> where all elements that the C<Range> represents have been
-reversed. Note that reversing an infinite C<Range> won't produce any meaningful
-results.
+Returns a L<Seq|/type/Seq> where all elements that the C<Range> represents have
+been reversed. Note that reversing an infinite C<Range> won't produce any
+meaningful results.
 
     say (1^..5).reverse;                            # OUTPUT: «(5 4 3 2)␤»
     say ('a'..'d').reverse;                         # OUTPUT: «(d c b a)␤»
@@ -310,7 +335,7 @@ Defined as:
 
     method Capture(Range --> Capture:D)
 
-Returns a L<Capture> with values of L«C<.min>|/type/Range#method_min»
+Returns a L<Capture|/type/Capture> with values of L«C<.min>|/type/Range#method_min»
 L«C<.max>|/type/Range#method_max»,
 L«C<.excludes-min>|/type/Range#method_excludes-min»,
 L«C<.excludes-max>|/type/Range#method_excludes-max»,

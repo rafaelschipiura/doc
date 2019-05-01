@@ -4,9 +4,11 @@
 
 =SUBTITLE A low-level explanation of Perl 6 containers
 
-This article started as a conversation on IRC explaining the difference
-between the C<Array> and the C<List> type in Perl 6. It explains the levels
-of indirection involved in dealing with variables and container elements.
+This section explains the levels of indirection involved in dealing with
+variables and container elements. The different types of containers used in
+Perl 6 are explained and the actions applicable to them like assigning, binding
+and flattening. More advanced topics like self-referential data, type
+constraints and custom containers are discussed at the end.
 
 =head1 What is a variable?
 
@@ -28,10 +30,10 @@ container>.
 
 =head1 Scalar containers
 
-Although objects of type L<C<Scalar>|/type/Scalar> are everywhere in Perl 6, you rarely
-see them directly as objects, because most operations
-I<decontainerize>, which means they act on the C<Scalar> container's
-contents instead of the container itself.
+Although objects of type L<C<Scalar>|/type/Scalar> are everywhere in Perl 6, you
+rarely see them directly as objects, because most operations I<decontainerize>,
+which means they act on the C<Scalar> container's contents instead of the
+container itself.
 
 In code like
 
@@ -104,12 +106,12 @@ container. The sigil C<&> is required when declaring the container and has to be
 omitted when executing the C<Callable>. The default type constraint is
 L<Callable|/type/Callable>.
 
-   my &callable = -> $ν { say "$ν is", $ν ~~ Int??" whole"!!" not whole" }
-   callable( ⅓ );
-   callable( 3 );
+    my &callable = -> $ν { say "$ν is", $ν ~~ Int??" whole"!!" not whole" }
+    callable( ⅓ );
+    callable( 3 );
 
 The sigil has to be provided when referring to the value stored in the
-container. This in turn allows C<Routine>s to be uses as
+container. This in turn allows C<Routine>s to be used as
 L<arguments|/type/Signature#Constraining_signatures_of_Callables> to calls.
 
     sub f() {}
@@ -278,13 +280,15 @@ container: slurpy parameters (C<*@a>) and explicit calls to C<flat>:
     sub f(*@x) { @x.elems };
     say f @a, 4, 5;             # OUTPUT: «5␤»
 
-You can also use C<|> to create a L<Slip>, introducing a list into the other.
+You can also use C<|> to create a L<Slip|/type/Slip>, introducing a list into the other.
 
     my @l := 1, 2, (3, 4, (5, 6)), [7, 8, (9, 10)];
-    say (|@l, 11, 12); # OUTPUT: «(1 2 (3 4 (5 6)) [7 8 (9 10)] 11 12)␤»
+    say (|@l, 11, 12);    # OUTPUT: «(1 2 (3 4 (5 6)) [7 8 (9 10)] 11 12)␤»
     say (flat @l, 11, 12) # OUTPUT: «(1 2 3 4 5 6 7 8 (9 10) 11 12)␤»
 
-In the first case, every element of C<@l> is I<slipped> as the corresponding elements of the resulting list. C<flat>, in the other hand, I<flattens> all elements including the elements of the included array, except for C«(9 10)».
+In the first case, every element of C<@l> is I<slipped> as the corresponding
+elements of the resulting list. C<flat>, in the other hand, I<flattens> all
+elements including the elements of the included array, except for C«(9 10)».
 
 As hinted above, scalar containers prevent that flattening:
 
@@ -292,13 +296,14 @@ As hinted above, scalar containers prevent that flattening:
     my @a = 1, 2, 3;
     say f $@a, 4, 5;            # OUTPUT: «3␤»
 
-The C<@> character can also be used as a prefix to coerce the argument to a list, thus removing a scalar container:
+The C<@> character can also be used as a prefix to coerce the argument to a
+list, thus removing a scalar container:
 
     my $x = (1, 2, 3);
     .say for @$x;               # 3 iterations
 
-However, the I<decont> operator C«<>» is more appropriate to decontainerize items that aren't
-lists:
+However, the I<decont> operator C«<>» is more appropriate to decontainerize
+items that aren't lists:
 
     my $x = ^Inf .grep: *.is-prime;
     say "$_ is prime" for @$x;  # WRONG! List keeps values, thus leaking memory
@@ -313,7 +318,7 @@ Methods generally don't care whether their invocant is in a scalar, so
 
 maps over a list of three elements, not of one.
 
-=head1 Self-Referential Data
+=head1 Self-referential data
 
 Containers types, including C<Array> and C<Hash>, allow you to create
 self-referential structures.
@@ -323,33 +328,39 @@ self-referential structures.
     put @a.perl;
     # OUTPUT: «((my @Array_75093712) = [@Array_75093712,])␤»
 
-Perl 6 does not prevent you from creating and using self-referential
-data; You may end up in a loop trying to dump the data; as a
+Although Perl 6 does not prevent you from creating and using self-referential
+data, by doing so you may end up in a loop trying to dump the data. As a
 last resort, you can use Promises to L<handle|/type/Promise#method_in> timeouts.
 
-=head1 Type Constraints
+=head1 Type constraints
 
-Any container can have a type constraint in the form of
-a L<type object|/language/typesystem#Type_objects> or a L<subset|/language/typesystem#subset>.
-Both can be placed between a declarator and the variable name or after the trait L<of|/type/Variable#trait_is_dynamic>.
+Any container can have a type constraint in the form of a L<type
+object|/language/typesystem#Type_objects> or a
+L<subset|/language/typesystem#subset>. Both can be placed between a declarator
+and the variable name or after the trait L<of|/type/Variable#trait_is_dynamic>.
 The constraint is a property of the variable, not the container.
+
+    subset Three-letter of Str where .chars == 3;
+    my Three-letter $acronym = "ÞFL";
+
+In this case, the type constraint is the (compile-type defined) subset
+C<Three-letter>.
 
 Variables may have no container in them, yet still offer the ability to
 re-bind and typecheck that rebind. The reason for that is in such cases the
-binding operator L<:=|/operators#infix_:=> performs the typecheck:
+binding operator L<:=|/language/operators#infix_:=> performs the typecheck:
 
     my Int \z = 42;
     z := 100; # OK
     z := "x"; # Typecheck failure
 
-The same isn't the case when, say, binding to a L<Hash> key, as there the
-binding is handled by a method call (even though the syntax remains the same,
-using C<:=> operator).
+The same isn't the case when, say, binding to a L<Hash|/type/Hash> key, as the binding is
+then handled by a method call (even though the syntax remains the same, using
+C<:=> operator).
 
-The default type constraint of a C<Scalar> container is L<Mu>.
-Introspection of type constraints on containers is provided by C<.VAR.of>
-method, which for C<@> and C<%> sigiled variables gives the constraint for
-values:
+The default type constraint of a C<Scalar> container is L<Mu|/type/Mu>. Introspection of
+type constraints on containers is provided by C<.VAR.of> method, which for C<@>
+and C<%> sigiled variables gives the constraint for values:
 
     my Str $x;
     say $x.VAR.of;  # OUTPUT: «(Str)␤»
@@ -357,6 +368,24 @@ values:
     say @a.VAR.of;  # OUTPUT: «(Num)␤»
     my Int %h;
     say %h.VAR.of;  # OUTPUT: «(Int)␤»
+
+=head2 Definedness constraints
+
+A container can also enforce a variable to be defined. Put a smiley in the
+declaration:
+
+    my Int:D $def = 3;
+    say $def;   # OUTPUT: «3␤»
+    $def = Int; # Typecheck failure
+
+You'll also need to initialize the variable in the declaration, it can't be
+left undefined after all.
+
+It's also possible to have this constraint enforced in all variables declared
+in a scope with the
+L<default defined variables pragma|/language/variables#Default_defined_variables_pragma>.
+People coming from other languages where variables are always defined will
+want to have a look.
 
 =head1 Custom containers
 

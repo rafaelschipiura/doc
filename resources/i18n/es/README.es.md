@@ -5,7 +5,7 @@
 [![Run Status](https://api.shippable.com/projects/591e99923f2f790700098a30/badge?branch=master)](https://app.shippable.com/github/perl6/doc)
 
 Una versión HTML de esta documentación puede ser encontrada en [https://docs.perl6.org/](https://docs.perl6.org/).
-Ésta es la documentación recomendada.
+Esta es la documentación recomendada.
 
 También hay disponible un comando para la terminal: "p6doc".
 
@@ -14,11 +14,11 @@ ya que esto es Perl 6 Pod, y GitHub asume que es Perl 5 Pod).
 
 ## README en otros lenguajes
 
-* [README en alemán](README.de.md)
-* [README en chino](README.zh.md)
-* [README en italiano](README.it.md)
-* [README en inglés](README.md)
-* [README en francés](README.fr.md)
+* [README en alemán](../de/README.de.md)
+* [README en chino](../zh/README.zh.md)
+* [README en italiano](../it/README.it.md)
+* [README en inglés](../../../README.md)
+* [README en francés](../fr/README.fr.md)
 
 ## Instalar p6doc
 

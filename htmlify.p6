@@ -1,4 +1,5 @@
 #!/usr/bin/env perl6
+
 use v6;
 
 =begin overview
@@ -36,8 +37,11 @@ use Perl6::TypeGraph::Viz;
 use Pod::Convenience;
 use Pod::Htmlify;
 use OO::Monitors;
+
+constant routine-subs = <sub method term operator trait submethod>;
+
 # Don't include backslash in Win or forwardslash on Unix because they are used
-# as directory seperators. These are handled in lib/Pod/Htmlify.pm6
+# as directory separators. These are handled in lib/Pod/Htmlify.pm6
 my \badchars-ntfs = Qw[ / ? < > : * | " ¥ ];
 my \badchars-unix = Qw[ ];
 my \badchars = $*DISTRO.is-win ?? badchars-ntfs !! badchars-unix;
@@ -45,8 +49,8 @@ my \badchars = $*DISTRO.is-win ?? badchars-ntfs !! badchars-unix;
     my monitor PathChecker {
         has %!seen-paths;
         method check($path) {
-            note "$path got badchar" if $path.contains(any(badchars));
-            note "$path got empty filename" if $path.split('/')[*-1] eq '.html';
+            note "$path has badchar" if $path.contains(any(badchars));
+            note "$path has empty filename" if $path.split('/')[*-1] eq '.html';
             note "duplicated path $path" if %!seen-paths{$path}:exists;
             %!seen-paths{$path}++;
         }
@@ -74,10 +78,11 @@ my %*POD2HTML-CALLBACKS;
 my %p5to6-functions;
 
 # TODO: Generate menulist automatically
-my @menu =
+my @menu; # for use by future menu autogen
+@menu =
     ('language',''          ) => (),
     ('type', 'Types'        ) => <basic composite domain-specific exceptions>,
-    ('routine', 'Routines'  ) => <sub method term operator>,
+    ('routine', 'Routines'  ) => routine-subs,
     ('programs', ''         ) => (),
     ('examples', 'Examples' ) => (),
     ('webchat', 'Chat with us') => (),
@@ -173,6 +178,7 @@ sub MAIN(
     Bool :$search-file = True,
     Bool :$no-highlight = False,
     Int  :$parallel = 1,
+    Bool :$manage = False,
 ) {
     if !$no-highlight {
         if ! $coffee-exe.IO.f {
@@ -192,12 +198,12 @@ sub MAIN(
 
     say 'Reading type graph ...';
     $type-graph = Perl6::TypeGraph.new-from-file('type-graph.txt');
-    my %h = $type-graph.sorted.kv.flat.reverse;
+    my %sorted-type-graph = $type-graph.sorted.kv.flat.reverse;
     write-type-graph-images(:force($typegraph), :$parallel);
 
-    process-pod-dir 'Programs', :$sparse, :$parallel;
-    process-pod-dir 'Language', :$sparse, :$parallel;
-    process-pod-dir 'Type', :sorted-by{ %h{.key} // -1 }, :$sparse, :$parallel;
+    process-pod-dir :topdir('build'), :dir('Programs'), :$sparse, :$parallel;
+    process-pod-dir :topdir('build'), :dir('Language'), :$sparse, :$parallel;
+    process-pod-dir :topdir('build'), :dir('Type'), :sorted-by{ %sorted-type-graph{.key} // -1 }, :$sparse, :$parallel;
 
     highlight-code-blocks unless $no-highlight;
 
@@ -210,19 +216,22 @@ sub MAIN(
         spurt "html{$doc.url}.html",
             p2h($doc.pod, 'programs', pod-path => $pod-path);
     }
+
     for $*DR.lookup("language", :by<kind>).list -> $doc {
         say "Writing language document for {$doc.name} ...";
         my $pod-path = pod-path-from-url($doc.url);
         spurt "html{$doc.url}.html",
             p2h($doc.pod, 'language', pod-path => $pod-path);
     }
+
     for $*DR.lookup("type", :by<kind>).list {
         write-type-source $_;
     }
 
+
     write-disambiguation-files if $disambiguation;
     write-search-file          if $search-file;
-    write-index-files;
+    write-index-files($manage);
 
     for (set(<routine syntax>) (&) set($*DR.get-kinds)).keys -> $kind {
         write-kind $kind;
@@ -234,26 +243,54 @@ sub MAIN(
     }
 
     spurt('links.txt', $url-log.URLS.sort.unique.join("\n"));
+
 }
 
-sub process-pod-dir($dir, :&sorted-by = &[cmp], :$sparse, :$parallel) {
-    say "Reading doc/$dir ...";
+sub process-pod-dir(:$topdir, :$dir, :&sorted-by = &[cmp], :$sparse, :$parallel) {
+    #say "Reading doc/$dir ...";
+    say "Reading $topdir/$dir ...";
 
-    my @pod-sources =
-        recursive-dir("doc/$dir/")
+    # What does the following array look like?
+    #
+    #   + an array of sorted pairs
+    #   + the sort key defaults to the base filename  stripped of '.pod6'
+    #   + any other sort order has to be processed separately as in 'Language'
+    #
+    #   the sorted pairs (regardless of how they are sorted) must consist of:
+    #     key:   base filename stripped of its ending .pod6
+    #     value: filename relative to the "$topdir/$dir" directory
+    my @pod-sources;
+
+    # default sort is by name {%hash{.key} => file basename w/o extension
+    @pod-sources =
+    recursive-dir("$topdir/$dir/")
         .grep({.path ~~ / '.pod6' $/})
         .map({
-            .path.subst("doc/$dir/", '')
-                 .subst(rx{\.pod6$},  '')
-                 .subst(:g,    '/',  '::')
-            => $_
-        }).sort(&sorted-by);
+               .path.subst("$topdir/$dir/", '')
+               .subst(rx{\.pod6$},  '')
+               .subst(:g,    '/',  '::')
+               => $_
+            }).sort(&sorted-by);
+
+    =begin comment
+    # PLEASE LEAVE THIS DEBUG CODE IN UNTIL WE'RE HAPPY
+    # WITH LANGUAGE PAGE SORTING AND DISPLAY
+    #if 1 && $dir eq 'Language' {
+    #if 1 && $dir eq 'Programs' {
+        say "\@pod-sources:";
+        for @pod-sources.kv -> $num, (:key($filename), :value($file)) {
+            say "num: $num; key: |$filename|; value : |$file|";
+        }
+        die "debug exit";
+    }
+    =end comment
+
 
     if $sparse {
         @pod-sources = @pod-sources[^(@pod-sources / $sparse).ceiling];
     }
 
-    say "Processing $dir Pod files ...";
+    say "Processing $topdir/$dir Pod files ...";
     my $total = +@pod-sources;
     my $kind  = $dir.lc;
     for @pod-sources.kv -> $num, (:key($filename), :value($file)) {
@@ -277,7 +314,18 @@ sub process-pod-dir($dir, :&sorted-by = &[cmp], :$sparse, :$parallel) {
 sub process-pod-source(:$kind, :$pod, :$filename, :$pod-is-complete) {
     my $summary = '';
     my $name = $filename;
+    my Bool $section = ($pod.config<class>:exists and $pod.config<class> eq 'section-start');
+    my Str $link = $pod.config<link> // $filename;
     my $first = $pod.contents[0];
+    if $first ~~ Pod::Block::Named && $first.name eq "TITLE" {
+        $name = $pod.contents[0].contents[0].contents[0];
+        if $kind eq "type" {
+            $name = $name.split(/\s+/)[*-1];
+        }
+    }
+    else {
+        note "$filename does not have a =TITLE";
+    }
     if $first ~~ Pod::Block::Named && $first.name eq "TITLE" {
         $name = $pod.contents[0].contents[0].contents[0];
         if $kind eq "type" {
@@ -308,19 +356,20 @@ sub process-pod-source(:$kind, :$pod, :$filename, :$pod-is-complete) {
         :$kind,
         :$name,
         :$pod,
-        :url("/$kind/$filename"),
+        :url("/$kind/$link"),
         :$summary,
         :$pod-is-complete,
         :subkinds($kind),
+        :$section,
         |%type-info,
     );
 
-    find-definitions :$pod, :$origin, :url("/$kind/$filename");
-    find-references  :$pod, :$origin, :url("/$kind/$filename");
+    find-definitions :$pod, :$origin, :url("/$kind/$link");
+    find-references  :$pod, :$origin, :url("/$kind/$link");
 
     # Special handling for 5to6-perlfunc
-    if $filename eq '5to6-perlfunc' {
-      find-p5to6-functions(:$pod, :$origin, :url("/$kind/$filename"));
+    if $link.contains('5to6-perlfunc') {
+      find-p5to6-functions(:$pod, :$origin, :url("/$kind/$link"));
     }
 }
 
@@ -349,10 +398,9 @@ multi write-type-source($doc) {
                   <code>\qq[$podname]</code></figcaption>
                 \qq[&svg-for-file("html/images/type-graph-$podname.svg")]
                 <p class="fallback">
-                  Stand-alone image:
                   <a rel="alternate"
                     href="/images/type-graph-\qq[&uri_escape($podname)].svg"
-                    type="image/svg+xml">vector</a>
+                    type="image/svg+xml">Expand above chart</a>
                 </p>
               </figure>
               CONTENTS_END
@@ -427,7 +475,7 @@ sub find-references(:$pod!, :$url, :$origin) {
         $index-name-attr = qq[index-entry{@indices ?? '-' !! ''}{@indices.join('-')}{$index-text ?? '-' !! ''}$index-text].subst('_', '__', :g).subst(' ', '_', :g).subst('%', '%25', :g).subst('#', '%23', :g);
 
        register-reference(:$pod, :$origin, url => $url ~ '#' ~ $index-name-attr);
-}
+    }
     elsif $pod.?contents {
         for $pod.contents -> $sub-pod {
             find-references(:pod($sub-pod), :$url, :$origin) if $sub-pod ~~ Pod::Block;
@@ -578,12 +626,12 @@ sub find-definitions(:$pod, :$origin, :$min-level = -1, :$url) {
                             :categories<operator>,
                     ;
                 }
-                when 'sub'|'method'|'term'|'routine'|'trait' {
+                when 'sub'|'method'|'term'|'routine'|'trait'|'submethod' {
                     %attr = :kind<routine>,
                             :categories($subkinds),
                     ;
                 }
-                when 'class'|'role'|'enum' {
+                when 'class'|'role'|'enum' { # This is never called.
                     my $summary = '';
                     if @pod-section[$i+1] ~~ {$_ ~~ Pod::Block::Named and .name eq "SUBTITLE"} {
                         $summary = @pod-section[$i+1].contents[0].contents[0];
@@ -596,8 +644,9 @@ sub find-definitions(:$pod, :$origin, :$min-level = -1, :$url) {
                             :$summary,
                     ;
                 }
-                when 'variable'|'twigil'|'declarator'|'quote' {
+                when 'constant'|'variable'|'twigil'|'declarator'|'quote' {
                     # TODO: More types of syntactic features
+                    #                    say "Subkinds: $subkinds";
                     %attr = :kind<syntax>,
                             :categories($subkinds),
                     ;
@@ -831,7 +880,7 @@ sub write-disambiguation-files() {
     say '';
 }
 
-sub write-index-files() {
+sub write-index-files($manage) {
     say 'Writing html/index.html and html/404.html...';
     spurt 'html/index.html',
         p2h(extract-pod('doc/HomePage.pod6'),
@@ -851,15 +900,42 @@ sub write-index-files() {
         ]}))
     ), 'programs');
 
+    # sort language index by file name to allow author control of order
     say 'Writing html/language.html ...';
-    spurt 'html/language.html', p2h(pod-with-title(
-        'Perl 6 Language Documentation',
-        pod-block("Tutorials, general reference, migration guides and meta pages for the Perl 6 language, in alphabetical order. Scroll down or search 'tutorial' or 'from' to see all of them."),
-        pod-table($*DR.lookup('language', :by<kind>).sort(*.name).map({[
+    if $manage {
+        my @p-chunks;
+        my @end;
+        for $*DR.lookup('language', :by<kind>).list {
+            if .section {
+                @p-chunks.push( pod-table(@end.map({[
+                    pod-link(.name, .url),
+                    .summary
+                ]})) ) if +@end;
+                @p-chunks.push: pod-heading( .name, :level(2) );
+                @end = ();
+            } else {
+                @end.push: $_;
+            }
+        }
+        @p-chunks.push( pod-table(@end.map({[
             pod-link(.name, .url),
             .summary
-        ]}))
-    ), 'language');
+            ]})) ) if +@end;
+        spurt 'html/language.html', p2h(pod-with-title(
+            'Perl 6 Language Documentation',
+            pod-block("Tutorials, general reference, migration guides and meta pages for the Perl 6 language."),
+            @p-chunks
+        ), 'language');
+    } else {
+        spurt 'html/language.html', p2h(pod-with-title(
+            'Perl 6 Language Documentation',
+            pod-block("Tutorials, general reference, migration guides and meta pages for the Perl 6 language."),
+            pod-table($*DR.lookup('language', :by<kind>).map({[
+                pod-link(.name, .url),
+                .summary
+            ]}))
+        ), 'language');
+    }
 
     my &summary;
     &summary = {
@@ -881,13 +957,13 @@ sub write-index-files() {
 
     write-main-index :kind<routine> :&summary;
 
-    for <sub method term operator> -> $category {
+    for routine-subs -> $category {
         write-sub-index :kind<routine> :$category :&summary;
     }
 }
 
 sub write-main-index(:$kind, :&summary = {Nil}) {
-    say "Writing html/$kind.html ...";
+    say "Writing main index html/$kind.html ...";
     spurt "html/$kind.html", p2h(pod-with-title(
         "Perl 6 {$kind.tc}s",
         pod-block(
@@ -896,7 +972,7 @@ sub write-main-index(:$kind, :&summary = {Nil}) {
             "Use the above menu to narrow it down topically."
         ),
         pod-table(
-            :headers[<Name  Declarator  Source>],
+            :headers[<Name  Type  Description>],
             [
                 $*DR.lookup($kind, :by<kind>)\
                 .categorize(*.name).sort(*.key)>>.value
@@ -912,7 +988,7 @@ sub write-main-index(:$kind, :&summary = {Nil}) {
 
 # XXX: Only handles normal routines, not types nor operators
 sub write-sub-index(:$kind, :$category, :&summary = {Nil}) {
-    say "Writing html/$kind-$category.html ...";
+    say "Writing sub-index  html/$kind-$category.html ...";
     my $this-category = $category.tc eq "Exceptions" ?? "Exception" !! $category.tc;
     spurt "html/$kind-$category.html", p2h(pod-with-title(
         "Perl 6 {$this-category} {$kind.tc}s",
@@ -1013,8 +1089,4 @@ sub pod-path-from-url($url) {
     return $pod-path;
 }
 
-sub warn-user (Str $warn-text) {
-    my $border = '=' x $warn-text.chars;
-    note "\n$border\n$warn-text\n$border\n";
-}
 # vim: expandtab shiftwidth=4 ft=perl6
